@@ -93,4 +93,23 @@ portf_beta <- data_weight %>%
     values_from = vwret,
     names_from = c("beta_type"),
     names_sep = ""
+)
+
+portf_cum <- portf_beta %>%
+  mutate(
+    beta_1_cum = cumprod(1 + beta_1) - 1,
+    beta_2_cum = cumprod(1 + beta_2) - 1,
+    beta_3_cum = cumprod(1 + beta_3) - 1,
+    beta_4_cum = cumprod(1 + beta_4) - 1,
+    beta_5_cum = cumprod(1 + beta_5) - 1
+  ) %>%
+  select(date, beta_1_cum:beta_5_cum) %>%
+  pivot_longer(
+    cols = beta_1_cum:beta_5_cum,
+    names_to = "beta_type",
+    values_to = "ret"
   )
+
+portf_cum %>%
+  ggplot(aes(x = date, y = ret, color = beta_type)) +
+  geom_line()
