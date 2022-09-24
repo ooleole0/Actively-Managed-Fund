@@ -12,7 +12,8 @@ colnames(data) <- c("secu_code",
                     "mktcap",
                     "beta",
                     "ret",
-                    "ret_minus_market")
+                    "ret_minus_market",
+                    "pvol")
 data <- data %>%
   mutate(
     date = as.Date(as.character(date), "%Y%m%d"),
@@ -72,7 +73,7 @@ data_merged <- data_trail %>%
   )
 
 data_weight <- data_merged %>%
-  select(date, 
+  select(date,
          secu_code, 
          mktcap, 
          ret, 
@@ -86,30 +87,58 @@ data_weight <- data_merged %>%
 
 portf_beta <- data_weight %>%
   group_by(date, beta_type) %>%
-  summarise(vwret = weighted.mean(ret, w = weight)) %>%
+  summarise(vwret = mean(ret_minus_market)) %>%
   ungroup() %>%
   pivot_wider(
     id_cols = date,
     values_from = vwret,
     names_from = c("beta_type"),
     names_sep = ""
-)
+) %>%
+  mutate(year = year(date), month = month(date))
+
+# read market data
+index_data <- read_csv("twindex.csv")
+colnames(index_data) <- c("date", "close", "open", "hi", "lo", "vol", "Mk_ret")
+index_data <- index_data %>%
+  mutate(
+    date = ymd(date),
+    year = year(date),
+    month = month(date),
+    Mk_ret = as.numeric(sub("%","",Mk_ret)) / 100
+  ) %>%
+  mutate(
+    date = ceiling_date(date, "month") - days(1)
+  ) %>%
+  arrange(date) %>%
+  select(date, year, month, Mk_ret)
+
+portf_beta <- portf_beta %>%
+  inner_join(index_data, by = c("year", "month")) %>%
+  select(-date.y)
 
 portf_cum <- portf_beta %>%
   mutate(
+    date = date.x,
     beta_1_cum = cumprod(1 + beta_1) - 1,
     beta_2_cum = cumprod(1 + beta_2) - 1,
     beta_3_cum = cumprod(1 + beta_3) - 1,
     beta_4_cum = cumprod(1 + beta_4) - 1,
-    beta_5_cum = cumprod(1 + beta_5) - 1
+    beta_5_cum = cumprod(1 + beta_5) - 1,
+    Mk_ret_cum = cumprod(1 + Mk_ret) - 1
   ) %>%
-  select(date, beta_1_cum:beta_5_cum) %>%
+  select(date, beta_1_cum:beta_5_cum, Mk_ret_cum)
+
+portf_plot <- portf_cum %>%
   pivot_longer(
     cols = beta_1_cum:beta_5_cum,
     names_to = "beta_type",
     values_to = "ret"
   )
 
-portf_cum %>%
+
+portf_plot %>%
   ggplot(aes(x = date, y = ret, color = beta_type)) +
-  geom_line()
+  geom_line() +
+  labs(y = "Cumulative Returns") +
+  scale_y_continuous(labels = scales::percent)
