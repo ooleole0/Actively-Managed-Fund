@@ -43,19 +43,16 @@ data <- data %>%
 # calculate roll beta mean
 data_trail <- data %>%
   mutate(
-    beta_avg = rollmean(beta, k = 36, na.pad=TRUE, align="right")
+    beta_avg = rollmean(beta, k = 12, na.pad=TRUE, align="right")
   ) %>%
   drop_na() %>%
   select(-beta)
 
-# create beta breakpoints
+# create beta median
 beta_breakpoints <- data_trail %>%
   group_by(date) %>%
   summarise(
-    beta_q20 = quantile(beta_avg, 0.2, na.rm = TRUE),
-    beta_q40 = quantile(beta_avg, 0.4, na.rm = TRUE),
-    beta_q60 = quantile(beta_avg, 0.6, na.rm = TRUE),
-    beta_q80 = quantile(beta_avg, 0.8, na.rm = TRUE)
+    beta_q50 = quantile(beta_avg, 0.5, na.rm = TRUE),
   ) %>%
   ungroup()
 
@@ -64,11 +61,8 @@ data_merged <- data_trail %>%
   inner_join(beta_breakpoints, by = "date") %>%
   mutate(
     beta_type = case_when(
-      beta_avg < beta_q20 ~ "beta_1",
-      beta_avg >= beta_q20 & beta_avg < beta_q40 ~ "beta_2",
-      beta_avg >= beta_q40 & beta_avg < beta_q60 ~ "beta_3",
-      beta_avg >= beta_q60 & beta_avg < beta_q80 ~ "beta_4",
-      beta_avg > beta_q80 ~ "beta_5"
+      beta_avg < beta_q50 ~ "L",
+      beta_avg >= beta_q50 ~ "H"
     )
   )
 
@@ -87,14 +81,14 @@ data_weight <- data_merged %>%
 
 portf_beta <- data_weight %>%
   group_by(date, beta_type) %>%
-  summarise(vwret = mean(ret_minus_market)) %>%
+  summarise(vwret = mean(ret)) %>%
   ungroup() %>%
   pivot_wider(
     id_cols = date,
     values_from = vwret,
     names_from = c("beta_type"),
     names_sep = ""
-) %>%
+  ) %>%
   mutate(year = year(date), month = month(date))
 
 # read market data
@@ -105,7 +99,7 @@ index_data <- index_data %>%
     date = ymd(date),
     year = year(date),
     month = month(date),
-    Mk_ret = as.numeric(sub("%","",Mk_ret)) / 100
+    Mk_ret = as.numeric(sub("%", "", Mk_ret)) / 100
   ) %>%
   mutate(
     date = ceiling_date(date, "month") - days(1)
@@ -120,18 +114,15 @@ portf_beta <- portf_beta %>%
 portf_cum <- portf_beta %>%
   mutate(
     date = date.x,
-    beta_1_cum = cumprod(1 + beta_1) - 1,
-    beta_2_cum = cumprod(1 + beta_2) - 1,
-    beta_3_cum = cumprod(1 + beta_3) - 1,
-    beta_4_cum = cumprod(1 + beta_4) - 1,
-    beta_5_cum = cumprod(1 + beta_5) - 1,
-    Mk_ret_cum = cumprod(1 + Mk_ret) - 1
+    H_cum = cumprod(1 + H) - 1,
+    L_cum = cumprod(1 + L) - 1,
+    Mk_ret_cum = cumprod(1 + Mk_ret) -1
   ) %>%
-  select(date, beta_1_cum:beta_5_cum, Mk_ret_cum)
+  select(date, H_cum, L_cum, Mk_ret_cum)
 
 portf_plot <- portf_cum %>%
   pivot_longer(
-    cols = beta_1_cum:beta_5_cum,
+    cols = H_cum:Mk_ret_cum,
     names_to = "beta_type",
     values_to = "ret"
   )
