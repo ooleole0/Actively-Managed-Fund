@@ -201,10 +201,22 @@ portf_cum_long <- portf_cum %>%
     values_to = "cum_ret"
   )
 
-portf_cum_long %>%
+portf_plot <- portf_cum_long %>%
+  filter(portf_type == c("ia_1_cum", "market_ret_cum")) %>%
+  mutate(
+    portf_type = case_when(
+      portf_type == "ia_1_cum" ~ "逆擴張因子",
+      portf_type == "market_ret_cum" ~ "台灣加權報酬指數"
+    )
+  )
+
+portf_plot %>%
   ggplot(aes(x = date)) +
   geom_line(aes(y = cum_ret, color = portf_type)) +
-  labs(y = "Cumulative returns") +
+  labs(
+    title = "逆擴張因子回測走勢圖",
+    x = "日期", y = "累積報酬率", 
+    color = "投資組合") +
   scale_y_continuous(labels = scales::percent)
 
 portf_sharpe <- portf %>%
