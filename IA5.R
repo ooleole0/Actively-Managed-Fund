@@ -8,6 +8,7 @@ library(PerformanceAnalytics)
 ret_data <- read_csv("return.csv")
 colnames(ret_data) <- c("secu_code", 
                         "UNI", 
+                        "indust",
                         "date",
                         "ret",
                         "mktcap")
@@ -29,6 +30,7 @@ ret_data <- ret_data %>%
     month,
     secu_code,
     UNI,
+    indust,
     ret,
     mktcap
   ) %>%
@@ -230,3 +232,11 @@ sharpe_annual <- SharpeRatio.annualized(portf_sharpe[, 1:6], portf_sharpe$rf) %>
     names_to = "portf_type",
     values_to = "sharpe_ratio"
   )
+
+ret_type_data %>%
+  filter(
+    date == max(date),
+    ia_type == "ia_1"
+    ) %>%
+  arrange(desc(mktcap)) %>%
+  write.csv("invest.csv")
