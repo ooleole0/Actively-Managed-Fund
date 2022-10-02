@@ -206,7 +206,7 @@ portf_plot <- portf_cum_long %>%
   mutate(
     portf_type = case_when(
       portf_type == "ia_1_cum" ~ "逆擴張因子",
-      portf_type == "market_ret_cum" ~ "台灣加權報酬指數"
+      portf_type == "market_ret_cum" ~ "臺灣發行量加權股價報酬指數"
     )
   )
 
