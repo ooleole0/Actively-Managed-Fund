@@ -1,6 +1,8 @@
 library(tidyverse)
 library(lubridate)
 library(zoo)
+library(GRS.test)
+library(PerformanceAnalytics)
 
 # read project data
 ret_data <- read_csv("return.csv")
@@ -145,7 +147,9 @@ rf_data <- rf_data %>%
   select(-secu_code) %>%
   mutate(
     date = ym(date),
-    rf = rf /100,
+    # revert annual risk-free return to monthly retun
+    # revert annual risk-free return to monthly return
+    rf = ((rf /100) + 1) ^ (1 / 12) - 1,
   )
 
 rm_data <- read_csv("TTRI.csv")
@@ -168,6 +172,9 @@ portf <- portf %>%
   left_join(rf_data, by = "date") %>%
   inner_join(rm_data, by = "date")
 
+ret_rf_mat <- portf[, 2:6] - portf$rf
+mkt_rf_mat <- portf$market_ret - portf$rf
+GRS_result <- GRS.test(ret_rf_mat, mkt_rf_mat)
 
 portf_cum <- portf %>%
   mutate(
@@ -176,6 +183,38 @@ portf_cum <- portf %>%
     ia_3_cum = cumprod(1 + ia_3) - 1,
     ia_4_cum = cumprod(1 + ia_4) - 1,
     ia_5_cum = cumprod(1 + ia_5) - 1,
+    rf_cum = cumprod(1 + rf) - 1 ,
     market_ret_cum = cumprod(1 + market_ret) - 1
   ) %>%
   select(date, ia_1_cum:market_ret_cum)
+
+portf_cum_long <- portf_cum %>%
+  pivot_longer(
+    cols = c("ia_1_cum",
+             "ia_2_cum",
+             "ia_3_cum",
+             "ia_4_cum",
+             "ia_5_cum",
+             "rf_cum",
+             "market_ret_cum"),
+    names_to = "portf_type",
+    values_to = "cum_ret"
+  )
+
+portf_cum_long %>%
+  ggplot(aes(x = date)) +
+  geom_line(aes(y = cum_ret, color = portf_type)) +
+  labs(y = "Cumulative returns") +
+  scale_y_continuous(labels = scales::percent)
+
+portf_sharpe <- portf %>%
+  select(ia_1:ia_5, market_ret, rf) %>%
+  xts(order.by = portf$date)
+
+sharpe_annual <- SharpeRatio.annualized(portf_sharpe[, 1:6], portf_sharpe$rf) %>%
+  as.data.frame() %>%
+  pivot_longer(
+    cols = ia_1:market_ret,
+    names_to = "portf_type",
+    values_to = "sharpe_ratio"
+  )
