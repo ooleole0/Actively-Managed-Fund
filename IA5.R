@@ -238,6 +238,19 @@ ret_type_data %>%
     date == max(date),
     ia_type == "ia_1"
     ) %>%
-  arrange(desc(mktcap)) %>%
-  separate(indust, into = c("indust_code", "indust"), sep = " ")%>%
+  separate(indust, into = c("indust_code", "indust"), sep = " ") %>%
+  group_by(indust) %>%
+  summarise(weight = sum(weight)) %>%
+  arrange(desc(weight)) %>%
   write.csv("invest.csv")
+
+ret_type_data %>%
+  filter(
+    date == max(date),
+    ia_type == "ia_1"
+  ) %>%
+  group_by(size_type) %>%
+  summarise(weight = sum(weight)) %>%
+  arrange(desc(weight)) %>%
+  write.csv("invest_size.csv")
+  
