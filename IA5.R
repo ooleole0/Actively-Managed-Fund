@@ -239,4 +239,5 @@ ret_type_data %>%
     ia_type == "ia_1"
     ) %>%
   arrange(desc(mktcap)) %>%
+  separate(indust, into = c("indust_code", "indust"), sep = " ")%>%
   write.csv("invest.csv")
