@@ -20,6 +20,7 @@ ret_data <- ret_data %>%
     month = month(date),
     ret = ret / 100
   ) %>%
+  # filter out financial firms and TDRs
   filter(
     substr(secu_code, 1, 2) != "28",
     substr(secu_code, 1, 2) != "91"
@@ -35,6 +36,7 @@ ret_data <- ret_data %>%
     mktcap
   ) %>%
   group_by(year) %>%
+  # create sorting year according to FS release date
   mutate(
     sorting_year = case_when(
       month < 4 ~ (year - 1),
@@ -43,6 +45,7 @@ ret_data <- ret_data %>%
   ) %>%
   ungroup() %>%
   group_by(secu_code) %>%
+  # use lagged mktcap as weight
   mutate(weight = lag(mktcap)) %>%
   ungroup() %>%
   drop_na()
@@ -67,6 +70,7 @@ ia_data <- ia_data %>%
   ungroup() %>%
   select(-month) %>%
   group_by(secu_code) %>%
+  # def of IA
   mutate(
     IA = ((inv - lag(inv)) + (fix_asset - lag(fix_asset)) / asset)
     )
@@ -149,7 +153,6 @@ rf_data <- rf_data %>%
   select(-secu_code) %>%
   mutate(
     date = ym(date),
-    # revert annual risk-free return to monthly retun
     # revert annual risk-free return to monthly return
     rf = ((rf /100) + 1) ^ (1 / 12) - 1,
   )
