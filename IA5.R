@@ -3,6 +3,7 @@ library(lubridate)
 library(zoo)
 library(GRS.test)
 library(PerformanceAnalytics)
+library(showtext)
 
 # read project data
 ret_data <- read_csv("return.csv")
@@ -222,7 +223,8 @@ portf_plot %>%
     title = "逆擴張因子回測走勢圖",
     x = "日期", y = "累積報酬率", 
     color = "投資組合") +
-  scale_y_continuous(labels = scales::percent)
+  scale_y_continuous(labels = scales::percent)+
+  theme(text = element_text(family = "source-han-sans-tw", size = 25))
 
 portf_sharpe <- portf %>%
   select(ia_1:ia_5, market_ret, rf) %>%
